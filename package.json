@@ -1,0 +1,61 @@
+{
+    "name": "koishi-plugin-vpn-control-chan",
+    "description": "VPN控制酱 - 一款支持控制多种VPN的插件，例如 Tailscale",
+    "version": "1.0.0-beta.1",
+    "main": "lib/index.cjs",
+    "module": "lib/index.mjs",
+    "types": "lib/index.d.ts",
+    "type": "module",
+    "exports": {
+        ".": {
+            "types": "./lib/index.d.ts",
+            "require": "./lib/index.cjs",
+            "import": "./lib/index.mjs"
+        },
+        "./package.json": "./package.json"
+    },
+    "files": [
+        "lib"
+    ],
+    "scripts": {
+        "build": "yakumo build --minify",
+        "publish": "yarn npm publish",
+        "lint": "eslint src",
+        "lint-fix": "eslint src --fix"
+    },
+    "license": "MPL-2.0",
+    "homepage": "https://github.com/PixLunaLab/pixluna",
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/PixLunaLab/pixluna"
+    },
+    "keywords": [
+        "koishi",
+        "plugin",
+        "VPN",
+        "vpn"
+    ],
+    "peerDependencies": {
+        "koishi": "^4.17.0"
+    },
+    "devDependencies": {
+        "@typescript-eslint/eslint-plugin": "^7.18.0",
+        "@typescript-eslint/parser": "^8.6.0",
+        "eslint": "^8.57.1",
+        "eslint-config-prettier": "^9.1.0",
+        "eslint-config-standard": "^17.1.0",
+        "eslint-plugin-import": "^2.30.0",
+        "eslint-plugin-n": "^16.6.2",
+        "eslint-plugin-prettier": "^5.2.1",
+        "eslint-plugin-promise": "^7.1.0",
+        "prettier": "^3.3.3",
+        "typescript": "^5.5.4",
+        "yakumo": "^1.0.0-beta.18",
+        "yakumo-tsc": "^1.0.0-beta.4"
+    },
+    "koishi": {
+        "description": {
+            "zh": "VPN控制酱（？ 一款支持控制多种VPN的插件，例如 Tailscale"
+        }
+    }
+}
