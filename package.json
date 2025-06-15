@@ -1,6 +1,6 @@
 {
     "name": "koishi-plugin-vpn-control-chan",
-    "description": "VPN控制酱 - 一款支持控制多种VPN的插件，例如 Tailscale",
+    "description": "VPN 控制酱♡ - 一款支持控制多种VPN的插件，例如 Tailscale",
     "version": "1.0.0-beta.1",
     "main": "lib/index.cjs",
     "module": "lib/index.mjs",
@@ -55,7 +55,7 @@
     },
     "koishi": {
         "description": {
-            "zh": "VPN控制酱（？ 一款支持控制多种VPN的插件，例如 Tailscale"
+            "zh": "VPN 控制酱♡（？ 一款支持控制多种VPN的插件，例如 Tailscale"
         }
     }
 }
