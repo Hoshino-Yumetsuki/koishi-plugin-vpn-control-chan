@@ -151,9 +151,9 @@ export class TailscalePlatform implements VPNPlatform {
             return h(
                 'p',
                 `${startIndex + index + 1}. ${statusIcon} ${device.hostname} (${device.os})
-📍 ${device.addresses[0]}
-👤 ${device.user}
-🕒 ${lastSeenDate} ${updateIcon}`
+ ${device.addresses[0]}
+ ${device.user}
+ ${lastSeenDate} ${updateIcon}`
             )
         })
 
@@ -164,6 +164,127 @@ export class TailscalePlatform implements VPNPlatform {
                     'p',
                     `所有的设备都在这里啦～ (共 ${devices.length} 台，第 ${page} 页/共 ${totalPages} 页):`
                 ),
+                ...deviceList
+            )
+        )
+    }
+
+    private calculateSimilarity(str1: string, str2: string): number {
+        const len1 = str1.length
+        const len2 = str2.length
+        const matrix = Array(len1 + 1)
+            .fill(null)
+            .map(() => Array(len2 + 1).fill(null))
+
+        for (let i = 0; i <= len1; i++) matrix[i][0] = i
+        for (let j = 0; j <= len2; j++) matrix[0][j] = j
+
+        for (let i = 1; i <= len1; i++) {
+            for (let j = 1; j <= len2; j++) {
+                if (str1[i - 1] === str2[j - 1]) {
+                    matrix[i][j] = matrix[i - 1][j - 1]
+                } else {
+                    matrix[i][j] = Math.min(
+                        matrix[i - 1][j] + 1,
+                        matrix[i][j - 1] + 1,
+                        matrix[i - 1][j - 1] + 1
+                    )
+                }
+            }
+        }
+
+        const maxLen = Math.max(len1, len2)
+        return maxLen === 0 ? 1 : (maxLen - matrix[len1][len2]) / maxLen
+    }
+
+    private searchDevices(devices: Device[], query: string): Device[] {
+        const normalizedQuery = query.toLowerCase()
+        const results: { device: Device; score: number }[] = []
+
+        devices.forEach((device) => {
+            let maxScore = 0
+            const searchFields = [
+                device.hostname,
+                device.user,
+                device.os,
+                device.addresses[0] || '',
+                device.clientVersion || ''
+            ]
+
+            searchFields.forEach((field) => {
+                const normalizedField = field.toLowerCase()
+
+                if (normalizedField.includes(normalizedQuery)) {
+                    maxScore = Math.max(maxScore, 1.0)
+                    return
+                }
+
+                const similarity = this.calculateSimilarity(
+                    normalizedQuery,
+                    normalizedField
+                )
+                if (similarity >= 0.7) {
+                    maxScore = Math.max(maxScore, similarity)
+                }
+            })
+
+            if (maxScore > 0) {
+                results.push({ device, score: maxScore })
+            }
+        })
+
+        return results
+            .sort((a, b) => b.score - a.score)
+            .map((result) => result.device)
+    }
+
+    async handleSearchCommand(
+        ctx: Context,
+        config: Config,
+        session: Session,
+        query: string
+    ): Promise<void> {
+        if (!query || query.trim().length === 0) {
+            await session.send('请输入要搜索的内容哦～')
+            return
+        }
+
+        const devices = await this.listDevices(ctx, config)
+
+        if (devices.length === 0) {
+            await session.send('咦？好像还没有设备连接呢～快去添加一台设备吧！')
+            return
+        }
+
+        const searchResults = this.searchDevices(devices, query.trim())
+
+        if (searchResults.length === 0) {
+            await session.send(
+                `没有找到包含 "${query}" 的设备呢～换个关键词试试吧`
+            )
+            return
+        }
+
+        const deviceList = searchResults.map((device, index) => {
+            const lastSeenDate = new Date(device.lastSeen).toLocaleString(
+                'zh-CN'
+            )
+            const statusIcon = device.authorized ? '✅' : '❌'
+            const updateIcon = device.updateAvailable ? '🔄' : ''
+
+            return h(
+                'p',
+                `${index + 1}. ${statusIcon} ${device.hostname} (${device.os})
+ ${device.addresses[0]}
+ ${device.user}
+ ${lastSeenDate} ${updateIcon}`
+            )
+        })
+
+        await session.send(
+            h(
+                'message',
+                h('p', `找到 ${searchResults.length} 台匹配的设备哦～`),
                 ...deviceList
             )
         )
@@ -217,6 +338,35 @@ export class TailscalePlatform implements VPNPlatform {
                     })
                     await session.send(
                         `哎呀，列出设备失败了呢～ ${error.message}`
+                    )
+                }
+            })
+
+        ctx.command(
+            'vcc.tailscale.search <query:string>',
+            '搜索 Tailscale 设备',
+            {
+                authority: config.minAuthority
+            }
+        )
+            .example('vcc.tailscale.search myserver')
+            .example('vcc.tailscale.search windows')
+            .example('vcc.tailscale.search 192.168')
+            .action(async ({ session }, query) => {
+                try {
+                    await this.handleSearchCommand(ctx, config, session, query)
+
+                    logger.info('成功搜索 Tailscale 设备', {
+                        userId: session.userId,
+                        query
+                    })
+                } catch (error) {
+                    logger.error('搜索 Tailscale 设备失败', {
+                        error: error.message,
+                        userId: session.userId
+                    })
+                    await session.send(
+                        `哎呀，搜索设备失败了呢～ ${error.message}`
                     )
                 }
             })
