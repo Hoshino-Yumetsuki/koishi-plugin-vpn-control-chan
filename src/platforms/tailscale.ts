@@ -79,67 +79,79 @@ export class TailscalePlatform implements VPNPlatform {
         config: Config,
         session: Session
     ): Promise<void> {
-        try {
-            if (config.messageBefore) {
-                await session.send(config.messageBefore)
-            }
-
-            const authKey = await this.generateAuthKey(ctx, config)
-            const installCommand = this.generateInstallCommand(authKey)
-
-            await session.send(
-                h(
-                    'message',
-                    h('p', `🔑 Tailscale Auth Key (7天有效):`),
-                    h('code', authKey),
-                    h('p', `📋 安装命令:`),
-                    h('code', installCommand)
-                )
-            )
-        } catch (error) {
-            throw error
+        if (config.messageBefore) {
+            await session.send(config.messageBefore)
         }
+
+        const authKey = await this.generateAuthKey(ctx, config)
+        const installCommand = this.generateInstallCommand(authKey)
+
+        await session.send(
+            h(
+                'message',
+                h('p', `🔑 Tailscale Auth Key (7天有效):`),
+                h('code', authKey),
+                h('p', `📋 安装命令:`),
+                h('code', installCommand)
+            )
+        )
     }
 
     async handleListCommand(
         ctx: Context,
         config: Config,
-        session: Session
+        session: Session,
+        page: number = 1
     ): Promise<void> {
-        try {
-            const devices = await this.listDevices(ctx, config)
+        const devices = await this.listDevices(ctx, config)
 
-            if (devices.length === 0) {
-                await session.send('📱 当前没有已注册的设备')
-                return
-            }
+        if (devices.length === 0) {
+            await session.send('📱 当前没有已注册的设备')
+            return
+        }
 
-            const deviceList = devices.map((device, index) => {
-                const lastSeenDate = new Date(device.lastSeen).toLocaleString(
-                    'zh-CN'
-                )
-                const statusIcon = device.authorized ? '✅' : '❌'
-                const updateIcon = device.updateAvailable ? '🔄' : ''
+        const pageSize = 10
+        const totalPages = Math.ceil(devices.length / pageSize)
+        const startIndex = (page - 1) * pageSize
+        const endIndex = startIndex + pageSize
+        const paginatedDevices = devices.slice(startIndex, endIndex)
 
-                return h(
-                    'p',
-                    `${index + 1}. ${statusIcon} ${device.hostname} (${device.os})
+        if (page > totalPages) {
+            await session.send(`📱 页数超出范围，总共 ${totalPages} 页`)
+            return
+        }
+
+        if (paginatedDevices.length === 0) {
+            await session.send(`📱 当前没有第 ${page} 页的设备`)
+            return
+        }
+
+        const deviceList = paginatedDevices.map((device, index) => {
+            const lastSeenDate = new Date(device.lastSeen).toLocaleString(
+                'zh-CN'
+            )
+            const statusIcon = device.authorized ? '✅' : '❌'
+            const updateIcon = device.updateAvailable ? '🔄' : ''
+
+            return h(
+                'p',
+                `${startIndex + index + 1}. ${statusIcon} ${device.hostname} (${device.os})
 📍 ${device.addresses[0]}
 👤 ${device.user}
 🕒 ${lastSeenDate} ${updateIcon}`
-                )
-            })
-
-            await session.send(
-                h(
-                    'message',
-                    h('p', `📱 Tailscale 设备列表 (${devices.length}台):`),
-                    ...deviceList
-                )
             )
-        } catch (error) {
-            throw error
-        }
+        })
+
+        await session.send(
+            h(
+                'message',
+                h(
+                    'p',
+                    `📱 Tailscale 设备列表 (${devices.length}台, 第 ${page} 页/${totalPages} 页):`
+                ),
+                ...deviceList
+            )
+        )
     }
 
     registerCommands(ctx: Context, config: Config, logger: Logger): void {
@@ -168,13 +180,17 @@ export class TailscalePlatform implements VPNPlatform {
         ctx.command('vcc.tailscale.list', '列出 Tailscale 设备', {
             authority: config.minAuthority
         })
+            .option('page', '-p <page:number>')
             .example('vcc.tailscale.list')
-            .action(async ({ session }) => {
+            .example('vcc.tailscale.list -p 2')
+            .action(async ({ session, options }) => {
                 try {
-                    await this.handleListCommand(ctx, config, session)
+                    const page = Number(options.page) || 1
+                    await this.handleListCommand(ctx, config, session, page)
 
                     logger.info('成功列出 Tailscale 设备', {
-                        userId: session.userId
+                        userId: session.userId,
+                        page
                     })
                 } catch (error) {
                     logger.error('列出 Tailscale 设备失败', {
