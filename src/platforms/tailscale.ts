@@ -53,6 +53,15 @@ export class TailscalePlatform implements VPNPlatform {
         return `curl -fsSL https://tailscale.com/install.sh | sh && sudo tailscale up --auth-key=${authKey}`
     }
 
+    // 处理设备名称，移除域名后缀
+    private formatDeviceName(name: string): string {
+        if (!name) return ''
+
+        // 使用第一个点号分割设备名称，只保留前半部分
+        const parts = name.split('.')
+        return parts[0]
+    }
+
     async listDevices(ctx: Context, config: Config): Promise<Device[]> {
         const { apiUrl, apiKey, tailnet } = config.tailscale
 
@@ -150,7 +159,7 @@ export class TailscalePlatform implements VPNPlatform {
 
             return h(
                 'p',
-                `${startIndex + index + 1}. ${statusIcon} ${device.name} (${device.os})
+                `${startIndex + index + 1}. ${statusIcon} ${this.formatDeviceName(device.name)} (${device.os})
  ${device.addresses[0]}
  ${device.user}
  ${lastSeenDate} ${updateIcon}`
@@ -203,8 +212,9 @@ export class TailscalePlatform implements VPNPlatform {
 
         devices.forEach((device) => {
             let maxScore = 0
+            // 搜索时同样需要去除设备名称的域名后缀
             const searchFields = [
-                device.name,
+                this.formatDeviceName(device.name),
                 device.user,
                 device.os,
                 device.addresses[0] || '',
@@ -278,12 +288,20 @@ export class TailscalePlatform implements VPNPlatform {
 
         try {
             const devices = await this.listDevices(ctx, config)
-            const device = devices.find(
+
+            let device = devices.find(
                 (d) =>
                     d.id === deviceId ||
                     d.name === deviceId ||
                     d.hostname === deviceId
             )
+
+            if (!device) {
+                device = devices.find((d) => {
+                    const formattedDeviceName = this.formatDeviceName(d.name)
+                    return formattedDeviceName === deviceId
+                })
+            }
 
             if (!device) {
                 await session.send(
@@ -296,7 +314,7 @@ export class TailscalePlatform implements VPNPlatform {
                 h(
                     'message',
                     h('p', `你确定要删除这台设备吗？`),
-                    h('p', `设备名称: ${device.name}`),
+                    h('p', `设备名称: ${this.formatDeviceName(device.name)}`),
                     h('p', `系统类型: ${device.os}`),
                     h('p', `所属用户: ${device.user}`),
                     h('p', `请输入 y 或 yes 确认删除，输入其他内容取消:`)
@@ -314,7 +332,9 @@ export class TailscalePlatform implements VPNPlatform {
 
             if (confirmation === 'y' || confirmation === 'yes') {
                 await this.deleteDevice(ctx, config, device.id)
-                await session.send(`设备 "${device.name}" 已成功删除～`)
+                await session.send(
+                    `设备 "${this.formatDeviceName(device.name)}" 已成功删除～`
+                )
             } else {
                 await session.send('已取消删除操作～')
             }
@@ -359,7 +379,7 @@ export class TailscalePlatform implements VPNPlatform {
 
             return h(
                 'p',
-                `${index + 1}. ${statusIcon} ${device.name} (${device.os})
+                `${index + 1}. ${statusIcon} ${this.formatDeviceName(device.name)} (${device.os})
  ${device.addresses[0]}
  ${device.user}
  ${lastSeenDate} ${updateIcon}`
