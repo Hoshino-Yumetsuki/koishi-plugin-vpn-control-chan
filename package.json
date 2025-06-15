@@ -1,7 +1,7 @@
 {
     "name": "koishi-plugin-vpn-control-chan",
     "description": "VPN 控制酱♡ - 一款支持控制多种VPN的插件，例如 Tailscale",
-    "version": "1.0.0-beta.2",
+    "version": "1.0.0-beta.3",
     "main": "lib/index.cjs",
     "module": "lib/index.mjs",
     "types": "lib/index.d.ts",
@@ -24,10 +24,10 @@
         "lint-fix": "eslint src --fix"
     },
     "license": "MPL-2.0",
-    "homepage": "https://github.com/PixLunaLab/pixluna",
+    "homepage": "https://github.com/Hoshino-Yumetsuki/koishi-plugin-vpn-control-chan",
     "repository": {
         "type": "git",
-        "url": "git+https://github.com/PixLunaLab/pixluna"
+        "url": "git+https://github.com/Hoshino-Yumetsuki/koishi-plugin-vpn-control-chan"
     },
     "keywords": [
         "koishi",
