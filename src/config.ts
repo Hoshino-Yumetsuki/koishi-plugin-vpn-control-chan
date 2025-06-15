@@ -1,6 +1,8 @@
 import { Schema } from 'koishi'
 
 export interface Config {
+    // 权限配置
+    minAuthority: number
     // Tailscale API 配置
     tailscale: {
         apiUrl: string
@@ -9,13 +11,17 @@ export interface Config {
     }
     // 消息配置
     messageBefore: string
-    messageAfter: string
     // 日志配置
     isLog: boolean
     logLevel: 'debug' | 'info' | 'warn' | 'error'
 }
 
 export const Config: Schema<Config> = Schema.object({
+    minAuthority: Schema.number()
+        .min(0)
+        .max(5)
+        .default(3)
+        .description('使用插件所需的最低权限等级 (0-5)'),
     tailscale: Schema.object({
         apiUrl: Schema.string()
             .default('https://api.tailscale.com')
@@ -24,11 +30,8 @@ export const Config: Schema<Config> = Schema.object({
         tailnet: Schema.string().required().description('Tailnet 名称')
     }).description('Tailscale API 配置'),
     messageBefore: Schema.string()
-        .default('正在生成 Tailscale Auth Key...')
+        .default('准备中...')
         .description('命令执行前发送的消息'),
-    messageAfter: Schema.string()
-        .default('Auth Key 生成完成！')
-        .description('命令执行后发送的消息'),
     isLog: Schema.boolean().default(false).description('是否启用日志'),
     logLevel: Schema.union(['debug', 'info', 'warn', 'error'])
         .default('info')

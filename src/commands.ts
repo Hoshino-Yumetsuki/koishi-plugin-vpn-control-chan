@@ -19,7 +19,9 @@ export function registerAllCommands(
 ): void {
     initializePlatforms()
 
-    ctx.command('vcc', 'VPN Control Chan | VPN 酱')
+    ctx.command('vcc', 'VPN Control Chan | VPN 酱', {
+        authority: config.minAuthority
+    })
 
     for (const [name, platform] of platformRegistry) {
         try {
