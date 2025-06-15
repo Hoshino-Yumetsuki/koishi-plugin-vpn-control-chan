@@ -187,6 +187,9 @@ export class TailscalePlatform implements VPNPlatform {
                         error: error.message,
                         userId: session.userId
                     })
+                    await session.send(
+                        `❌ 生成 Auth Key 失败: ${error.message}`
+                    )
                 }
             })
 
@@ -210,6 +213,7 @@ export class TailscalePlatform implements VPNPlatform {
                         error: error.message,
                         userId: session.userId
                     })
+                    await session.send(`❌ 列出设备失败: ${error.message}`)
                 }
             })
     }
