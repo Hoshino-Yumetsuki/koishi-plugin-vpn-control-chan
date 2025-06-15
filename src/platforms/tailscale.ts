@@ -119,9 +119,7 @@ export class TailscalePlatform implements VPNPlatform {
         const devices = await this.listDevices(ctx, config)
 
         if (devices.length === 0) {
-            await session.send(
-                '咦？好像还没有设备连接呢～快去添加一台设备吧！'
-            )
+            await session.send('咦？好像还没有设备连接呢～快去添加一台设备吧！')
             return
         }
 
