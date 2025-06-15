@@ -98,13 +98,13 @@ export class TailscalePlatform implements VPNPlatform {
         await session.send(
             h(
                 'message',
-                h('p', `🔑 Tailscale Auth Key 已生成 (7天有效):`),
+                h('p', `呀！Auth Key 在这里啦～ (7天内有效哦):`),
                 h('code', authKey),
-                h('p', `📋 完整安装命令:`),
+                h('p', `一键安装命令:`),
                 h('code', installCommand),
                 h(
                     'p',
-                    `💡 提示: 复制上述命令到目标设备执行即可自动安装并连接 Tailscale`
+                    `温馨提示: 把上面的命令复制到目标设备执行，就能自动安装并连接 Tailscale 啦～`
                 )
             )
         )
@@ -119,7 +119,9 @@ export class TailscalePlatform implements VPNPlatform {
         const devices = await this.listDevices(ctx, config)
 
         if (devices.length === 0) {
-            await session.send('📱 当前没有已注册的设备')
+            await session.send(
+                '咦？好像还没有设备连接呢～快去添加一台设备吧！'
+            )
             return
         }
 
@@ -130,12 +132,14 @@ export class TailscalePlatform implements VPNPlatform {
         const paginatedDevices = devices.slice(startIndex, endIndex)
 
         if (page > totalPages) {
-            await session.send(`📱 页数超出范围，总共 ${totalPages} 页`)
+            await session.send(
+                `哎呀，页数超出范围啦～总共只有 ${totalPages} 页哦`
+            )
             return
         }
 
         if (paginatedDevices.length === 0) {
-            await session.send(`📱 当前没有第 ${page} 页的设备`)
+            await session.send(`嗯...第 ${page} 页好像没有设备呢`)
             return
         }
 
@@ -160,7 +164,7 @@ export class TailscalePlatform implements VPNPlatform {
                 'message',
                 h(
                     'p',
-                    `📱 Tailscale 设备列表 (${devices.length}台, 第 ${page} 页/${totalPages} 页):`
+                    `所有的设备都在这里啦～ (共 ${devices.length} 台，第 ${page} 页/共 ${totalPages} 页):`
                 ),
                 ...deviceList
             )
@@ -188,7 +192,7 @@ export class TailscalePlatform implements VPNPlatform {
                         userId: session.userId
                     })
                     await session.send(
-                        `❌ 生成 Auth Key 失败: ${error.message}`
+                        `哎呀，Auth Key 生成失败了呢～ ${error.message}`
                     )
                 }
             })
@@ -213,7 +217,9 @@ export class TailscalePlatform implements VPNPlatform {
                         error: error.message,
                         userId: session.userId
                     })
-                    await session.send(`❌ 列出设备失败: ${error.message}`)
+                    await session.send(
+                        `哎呀，列出设备失败了呢～ ${error.message}`
+                    )
                 }
             })
     }
