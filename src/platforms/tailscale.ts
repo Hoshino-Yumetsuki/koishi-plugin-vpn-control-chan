@@ -150,7 +150,7 @@ export class TailscalePlatform implements VPNPlatform {
 
             return h(
                 'p',
-                `${startIndex + index + 1}. ${statusIcon} ${device.hostname} (${device.os})
+                `${startIndex + index + 1}. ${statusIcon} ${device.name} (${device.os})
  ${device.addresses[0]}
  ${device.user}
  ${lastSeenDate} ${updateIcon}`
@@ -204,7 +204,7 @@ export class TailscalePlatform implements VPNPlatform {
         devices.forEach((device) => {
             let maxScore = 0
             const searchFields = [
-                device.hostname,
+                device.name,
                 device.user,
                 device.os,
                 device.addresses[0] || '',
@@ -236,6 +236,91 @@ export class TailscalePlatform implements VPNPlatform {
         return results
             .sort((a, b) => b.score - a.score)
             .map((result) => result.device)
+    }
+
+    async deleteDevice(
+        ctx: Context,
+        config: Config,
+        deviceId: string
+    ): Promise<boolean> {
+        const { apiUrl, apiKey } = config.tailscale
+
+        try {
+            await ctx.http.delete(`${apiUrl}/api/v2/device/${deviceId}`, {
+                headers: {
+                    Authorization: `Bearer ${apiKey}`,
+                    'Content-Type': 'application/json'
+                }
+            })
+            return true
+        } catch (error) {
+            if (error.response) {
+                const status = error.response.status
+                const data = error.response.data
+                throw new Error(
+                    `Tailscale API 错误 (${status}): ${JSON.stringify(data)}`
+                )
+            }
+            throw new Error(`网络请求失败: ${error.message}`)
+        }
+    }
+
+    async handleDeleteCommand(
+        ctx: Context,
+        config: Config,
+        session: Session,
+        deviceId: string
+    ): Promise<void> {
+        if (!deviceId || deviceId.trim().length === 0) {
+            await session.send('请提供要删除的设备ID哦～')
+            return
+        }
+
+        try {
+            const devices = await this.listDevices(ctx, config)
+            const device = devices.find(
+                (d) =>
+                    d.id === deviceId ||
+                    d.name === deviceId ||
+                    d.hostname === deviceId
+            )
+
+            if (!device) {
+                await session.send(
+                    `找不到ID为 "${deviceId}" 的设备呢，请确认ID是否正确～`
+                )
+                return
+            }
+
+            await session.send(
+                h(
+                    'message',
+                    h('p', `你确定要删除这台设备吗？`),
+                    h('p', `设备名称: ${device.name}`),
+                    h('p', `系统类型: ${device.os}`),
+                    h('p', `所属用户: ${device.user}`),
+                    h('p', `请输入 y 或 yes 确认删除，输入其他内容取消:`)
+                )
+            )
+
+            const result = await session.prompt(15000)
+
+            if (result === null) {
+                await session.send('回复超时，已自动取消删除操作～')
+                return
+            }
+
+            const confirmation = result.toLowerCase()
+
+            if (confirmation === 'y' || confirmation === 'yes') {
+                await this.deleteDevice(ctx, config, device.id)
+                await session.send(`设备 "${device.name}" 已成功删除～`)
+            } else {
+                await session.send('已取消删除操作～')
+            }
+        } catch (error) {
+            throw new Error(`删除设备失败: ${error.message}`)
+        }
     }
 
     async handleSearchCommand(
@@ -274,7 +359,7 @@ export class TailscalePlatform implements VPNPlatform {
 
             return h(
                 'p',
-                `${index + 1}. ${statusIcon} ${device.hostname} (${device.os})
+                `${index + 1}. ${statusIcon} ${device.name} (${device.os})
  ${device.addresses[0]}
  ${device.user}
  ${lastSeenDate} ${updateIcon}`
@@ -367,6 +452,39 @@ export class TailscalePlatform implements VPNPlatform {
                     })
                     await session.send(
                         `哎呀，搜索设备失败了呢～ ${error.message}`
+                    )
+                }
+            })
+
+        ctx.command(
+            'vcc.tailscale.delete <deviceId:string>',
+            '删除 Tailscale 设备',
+            {
+                authority: config.minAuthority
+            }
+        )
+            .example('vcc.tailscale.delete device-id')
+            .example('vcc.tailscale.delete hostname')
+            .action(async ({ session }, deviceId) => {
+                try {
+                    await this.handleDeleteCommand(
+                        ctx,
+                        config,
+                        session,
+                        deviceId
+                    )
+
+                    logger.info('成功删除 Tailscale 设备', {
+                        userId: session.userId,
+                        deviceId
+                    })
+                } catch (error) {
+                    logger.error('删除 Tailscale 设备失败', {
+                        error: error.message,
+                        userId: session.userId
+                    })
+                    await session.send(
+                        `哎呀，删除设备失败了呢～ ${error.message}`
                     )
                 }
             })
